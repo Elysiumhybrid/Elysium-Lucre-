@@ -1,0 +1,55 @@
+```python
+# Elysium: The Hybrid Coin
+class ElysiumCoin:
+    def __init__(self, name, symbol, total_supply):
+        self.name = name
+        self.symbol = symbol
+        self.total_supply = total_supply
+        self.balances = {}
+        self.transactions = []
+def create_account(self, address):
+        if address not in self.balances:
+            self.balances[address] = 0
+            print(f"Account created for {address}.")
+
+    def mint(self, address, amount):
+        if address in self.balances:
+            if self.total_supply >= amount:
+                self.balances[address] += amount
+                self.total_supply -= amount
+                self.transactions.append(f"Minted {amount} {self.symbol} to {address}.")
+                print(f"Minted {amount} {self.symbol} to {address}.")
+            else:
+                print("Insufficient total supply to mint.")
+        else:
+            print("Account does not exist.")
+
+    def transfer(self, from_address, to_address, amount):
+        if from_address in self.balances and to_address in self.balances:
+            if self.balances[from_address] >= amount:
+                self.balances[from_address] -= amount
+                self.balances[to_address] += amount
+                self.transactions.append(f"Transferred {amount} {self.symbol} from {from_address} to {to_address}.")
+                print(f"Transferred {amount} {self.symbol} from {from_address} to {to_address}.")
+            else:
+                print("Insufficient balance for transfer.")
+        else:
+            print("One or both accounts do not exist.")
+
+    def get_balance(self, address):
+        return self.balances.get(address, "Account does not exist.")
+
+    def get_transaction_history(self):
+        return self.transactions
+
+# Example usage
+if __name__ == "__main__":
+    elysium = ElysiumCoin("Elysium", "ELY", 1000000)
+    elysium.create_account("address1")
+    elysium.create_account("address2")
+    elysium.mint("address1", 500)
+    elysium.transfer("address1", "address2", 200)
+    print(f"Balance of address1: {elysium.get_balance('address1')}")
+    print(f"Balance of address2: {elysium.get_balance('address2')}")
+    print("Transaction History:", elysium.get_transaction_history())
+```
