@@ -53,3 +53,28 @@ if __name__ == "__main__":
     print(f"Balance of address2: {elysium.get_balance('address2')}")
     print("Transaction History:", elysium.get_transaction_history())
 ```
+```python
+class Block:
+    def __init__(self, index, previous_hash, timestamp, data, hash):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp
+        self.data = data
+        self.hash = hash
+
+def create_genesis_block():
+    return Block(0, "0", "01/01/2023", "Genesis Block", calculate_hash(0, "0", "01/01/2023", "Genesis Block"))
+
+def calculate_hash(index, previous_hash, timestamp, data):
+    return hashlib.sha256(f"{index}{previous_hash}{timestamp}{data}".encode()).hexdigest()
+
+# Example of adding a new block
+def add_block(previous_block, data):
+    index = previous_block.index + 1
+    timestamp = time.time()
+    hash = calculate_hash(index, previous_block.hash, timestamp, data)
+    return Block(index, previous_block.hash, timestamp, data, hash)
+
+# Initialize blockchain
+blockchain = [create_genesis_block()]
+```
