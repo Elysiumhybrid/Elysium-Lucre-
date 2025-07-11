@@ -78,3 +78,371 @@ def add_block(previous_block, data):
 # Initialize blockchain
 blockchain = [create_genesis_block()]
 ```
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Coin Name</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Your Coin Name</h1>
+        <p>Welcome to the official website of Your Coin Name. Join us in revolutionizing the cryptocurrency world!</p>
+    </header>
+    <main>
+        <section>
+            <h2>About Your Coin</h2>
+            <p>Your Coin Name is designed to provide fast, secure, and low-cost transactions. Our mission is to empower users and create a decentralized financial ecosystem that is accessible to everyone.</p>
+        </section>
+        <section>
+            <h2>How to Get Started</h2>
+            <p>If you're serious about creating your own cryptocurrency, here’s how you can get started:</p>
+            <ol>
+                <li><strong>Research:</strong> Familiarize yourself with blockchain technology and cryptocurrency.</li>
+                <li><strong>Choose Your Platform:</strong> Decide on the blockchain platform you want to build on.</li>
+                <li><strong>Develop Your Coin:</strong> Create secure smart contracts for your coin.</li>
+                <li><strong>Test Thoroughly:</strong> Conduct extensive testing to ensure security and functionality.</li>
+                <li><strong>Launch:</strong> Once everything is in place, launch your cryptocurrency.</li>
+            </ol>
+        </section>
+        <section>
+            <h2>Join Our Community</h2>
+            <p>We believe in the power of community. Join us on our social media platforms to stay updated on the latest news and developments related to Your Coin Name!</p>
+            <button onclick="learnMore()">Learn More</button>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2023 Your Coin Name. All rights reserved.</p>
+    </footer>
+    <script>
+        function learnMore() {
+            window.location.href = "about.html"; // Link to your about page
+        }
+    </script>
+</body>
+</html>
+```
+
+### CSS (styles.css)
+
+```css
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+header {
+    background: #007bff;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+main {
+    padding: 20px;
+}
+
+h1, h2 {
+    margin: 0;
+}
+
+button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #218838;
+}
+
+footer {
+    text-align: center;
+    padding: 10px;
+    background: #333;
+    color: white;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+```
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract HybridCurrency is ERC20, Ownable, ReentrancyGuard {
+    mapping(address => bool) public isPartner; // Track partner addresses
+    mapping(address => uint256) public stakingBalance; // Track staking balances
+    mapping(address => uint256) public lastStakedTime; // Track last staking time
+    uint256 public burnRate; // Percentage of tokens to burn on each transaction
+    uint256 public dynamicFee; // Dynamic fee based on conditions
+    uint256 public totalBurned; // Total tokens burned
+    uint256 public totalStaked; // Total tokens staked
+
+    struct Proposal {
+        string description; // Description of the proposal
+        uint256 voteCount; // Number of votes for the proposal
+        mapping(address => bool) voters; // Track who has voted
+    }
+    mapping(uint256 => Proposal) public proposals; // Store proposals
+    uint256 public proposalCount; // Count of proposals
+
+    event TokensBurned(address indexed from, uint256 amount);
+    event ProposalCreated(uint256 indexed proposalId, string description);
+    event Voted(uint256 indexed proposalId, address indexed voter);
+    event Staked(address indexed user, uint256 amount);
+    event Unstaked(address indexed user, uint256 amount);
+    event FeeRedistributed(uint256 amount);
+    event DynamicFeeUpdated(uint256 newFee);
+    event BurnRateUpdated(uint256 newBurnRate);
+
+    constructor() ERC20("HybridCurrency", "HYC") {
+        _mint(msg.sender, 1000000 * 10 ** decimals()); // Initial minting
+        burnRate = 5; // 5% burn rate
+        dynamicFee = 1; // 1% default fee
+    }
+
+    // Set partner status
+    function setPartner(address partner, bool status) external onlyOwner {
+        isPartner[partner] = status;
+    }
+
+    // Update dynamic fee
+    function setDynamicFee(uint256 fee) external onlyOwner {
+        dynamicFee = fee;
+        emit DynamicFeeUpdated(fee);
+    }
+
+    // Update burn rate
+    function setBurnRate(uint256 rate) external onlyOwner {
+        burnRate = rate;
+        emit BurnRateUpdated(rate);
+    }
+
+    // Burn tokens
+    function burn(uint256 amount) public {
+        _burn(msg.sender, amount);
+        totalBurned += amount;
+        emit TokensBurned(msg.sender, amount);
+    }
+
+    // Override transfer function to include fees and burn
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
+        uint256 fee = (amount * dynamicFee) / 100;
+        uint256 burnAmount = (amount * burnRate) / 100;
+        uint256 transferAmount = amount - fee - burnAmount;
+
+        _burn(msg.sender, burnAmount);
+        totalBurned += burnAmount;
+        emit TokensBurned(msg.sender, burnAmount);
+
+        _transfer(msg.sender, recipient, transferAmount);
+        return true;
+    }
+
+    // Create a new proposal
+    function createProposal(string memory description) external {
+        proposalCount++;
+        Proposal storage newProposal = proposals[proposalCount];
+        newProposal.description = description;
+        emit ProposalCreated(proposalCount, description);
+    }
+
+    // Vote on a proposal
+    function vote(uint256 proposalId) external {
+        Proposal storage proposal = proposals[proposalId];
+        require(!proposal.voters[msg.sender], "Already voted");
+        proposal.voters[msg.sender] = true;
+        proposal.voteCount++;
+        emit Voted(proposalId, msg.sender);
+    }
+
+    // Get vote count for a proposal
+    function getProposalVoteCount(uint256 proposalId) external view returns (uint256) {
+        return proposals[proposalId].voteCount;
+    }
+
+    // Stake tokens
+    function stake(uint256 amount) external nonReentrant {
+        require(amount > 0, "Amount must be greater than 0");
+        _transfer(msg.sender, address(this), amount);
+        stakingBalance[msg.sender] += amount;
+        totalStaked += amount;
+        lastStakedTime[msg.sender] = block.timestamp;
+        emit Staked(msg.sender, amount);
+    }
+
+    // Unstake tokens
+    function unstake(uint256 amount) external nonReentrant {
+        require(stakingBalance[msg.sender] >= amount, "Insufficient balance to unstake");
+        stakingBalance[msg.sender] -= amount;
+        totalStaked -= amount;
+        _transfer(address(this), msg.sender, amount);
+        emit Unstaked(msg.sender, amount);
+    }
+
+    // Distribute fees to token holders
+    function distributeFees() external onlyOwner {
+        uint256 totalFees = totalSupply() * dynamicFee / 100;
+        for (uint256 i = 0; i < totalSupply(); i++) {
+            address holder = address(i); // Placeholder for actual holder addresses
+            uint256 holderBalance = balanceOf(holder);
+            if (holderBalance > 0) {
+                uint256 holderShare = (holderBalance * totalFees) / totalSupply();
+                _transfer(address(this), holder, holderShare);
+                emit FeeRedistributed(holderShare);
+            }
+        }
+    }
+
+    // Emergency pause function (not fully implemented)
+    function emergencyPause() external onlyOwner {
+        // Logic to pause certain functions (implementation can be added as needed)
+    }
+
+    // Get staking balance
+    function getStakingBalance(address user) external view returns (uint256) {
+        return stakingBalance[user];
+    }
+
+    // Get total burned tokens
+    function getTotalBurned() external view returns (uint256) {
+        return totalBurned;
+    }
+
+    // Get total staked tokens
+    function getTotalStaked() external view returns (uint256) {
+        return totalStaked;
+    }
+}
+```
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract HybridCurrency is ERC20, Ownable, ReentrancyGuard {
+    mapping(address => bool) public isPartner;
+    mapping(address => uint256) public stakingBalance;
+    mapping(address => uint256) public lastStakedTime;
+    uint256 public burnRate; // Percentage of tokens to burn on each transaction
+    uint256 public dynamicFee; // Dynamic fee based on conditions
+    uint256 public totalBurned;
+    uint256 public totalStaked;
+
+    struct Proposal {
+        string description;
+        uint256 voteCount;
+        mapping(address => bool) voters;
+    }
+    mapping(uint256 => Proposal) public proposals;
+    uint256 public proposalCount;
+
+    event TokensBurned(address indexed from, uint256 amount);
+    event ProposalCreated(uint256 indexed proposalId, string description);
+    event Voted(uint256 indexed proposalId, address indexed voter);
+    event Staked(address indexed user, uint256 amount);
+    event Unstaked(address indexed user, uint256 amount);
+    event FeeRedistributed(uint256 amount);
+
+    constructor() ERC20("HybridCurrency", "HYC") {
+        _mint(msg.sender, 1000000 * 10 ** decimals());
+        burnRate = 5; // 5% burn rate
+        dynamicFee = 1; // 1% default fee
+    }
+
+    function setPartner(address partner, bool status) external onlyOwner {
+        isPartner[partner] = status;
+    }
+
+    function setDynamicFee(uint256 fee) external onlyOwner {
+        dynamicFee = fee;
+    }
+
+    function burn(uint256 amount) public {
+        _burn(msg.sender, amount);
+        totalBurned += amount;
+        emit TokensBurned(msg.sender, amount);
+    }
+
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
+        uint256 fee = (amount * dynamicFee) / 100;
+        uint256 burnAmount = (amount * burnRate) / 100;
+        uint256 transferAmount = amount - fee - burnAmount;
+
+        _burn(msg.sender, burnAmount);
+        totalBurned += burnAmount;
+        emit TokensBurned(msg.sender, burnAmount);
+
+        _transfer(msg.sender, recipient, transferAmount);
+        return true;
+    }
+
+    function createProposal(string memory description) external {
+        proposalCount++;
+        Proposal storage newProposal = proposals[proposalCount];
+        newProposal.description = description;
+        emit ProposalCreated(proposalCount, description);
+    }
+
+    function vote(uint256 proposalId) external {
+        Proposal storage proposal = proposals[proposalId];
+        require(!proposal.voters[msg.sender], "Already voted");
+        proposal.voters[msg.sender] = true;
+        proposal.voteCount++;
+        emit Voted(proposalId, msg.sender);
+    }
+
+    function getProposalVoteCount(uint256 proposalId) external view returns (uint256) {
+        return proposals[proposalId].voteCount;
+    }
+
+    function stake(uint256 amount) external nonReentrant {
+        require(amount > 0, "Amount must be greater than 0");
+        _transfer(msg.sender, address(this), amount);
+        stakingBalance[msg.sender] += amount;
+        totalStaked += amount;
+        lastStakedTime[msg.sender] = block.timestamp;
+        emit Staked(msg.sender, amount);
+    }
+
+    function unstake(uint256 amount) external nonReentrant {
+        require(stakingBalance[msg.sender] >= amount, "Insufficient balance to unstake");
+        stakingBalance[msg.sender] -= amount;
+        totalStaked -= amount;
+        _transfer(address(this), msg.sender, amount);
+        emit Unstaked(msg.sender, amount);
+    }
+
+    function distributeFees() external onlyOwner {
+        uint256 totalFees = totalSupply() * dynamicFee / 100;
+        for (uint256 i = 0; i < totalSupply(); i++) {
+            address holder = address(i); // Placeholder for actual holder addresses
+            uint256 holderBalance = balanceOf(holder);
+            if (holderBalance > 0) {
+                uint256 holderShare = (holderBalance * totalFees) / totalSupply();
+                _transfer(address(this), holder, holderShare);
+                emit FeeRedistributed(holderShare);
+            }
+        }
+    }
+
+    function emergencyPause() external onlyOwner {
+        // Logic to pause certain functions (not implemented in this example)
+    }
+}
+```
