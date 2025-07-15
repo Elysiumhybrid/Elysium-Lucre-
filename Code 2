@@ -1,0 +1,137 @@
+
+
+```python
+# 1. Import Necessary Libraries
+import hashlib
+import time
+import json
+from flask import Flask, jsonify, request
+from urllib.parse import urlparse
+import requests
+
+# 2. Define the Block Class
+class Block:
+    def __init__(self, index, previous_hash, timestamp, transactions, nonce, hash):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = timestamp
+        self.transactions = transactions
+        self.nonce = nonce
+        self.hash = hash
+
+# 3. Define Blockchain Class
+class Blockchain:
+    def __init__(self):
+        self.chain = [self.create_genesis_block()]
+        self.current_transactions = []
+        self.nodes = set()
+        self.difficulty = 4  # Initial difficulty
+        self.mining_reward = 1  # Reward for mining a block
+
+    def create_genesis_block(self):
+        return Block(0, "0", int(time.time()), [], 0, self.calculate_hash(0, "0", int(time.time()), [], 0))
+
+    def create_block(self, nonce, previous_hash):
+        block = Block(len(self.chain) + 1, previous_hash, time.time(), self.current_transactions, nonce, previous_hash)
+        self.current_transactions = []  # Reset the current list of transactions
+        self.chain.append(block)
+        return block
+
+    def add_transaction(self, sender, recipient, amount):
+        if not self.validate_transaction(sender, recipient, amount):
+            return False
+        self.current_transactions.append({
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount,
+        })
+        return self.last_block.index + 1
+
+    def validate_transaction(self, sender, recipient, amount):
+        if not isinstance(amount, (int, float)) or amount <= 0:
+            return False
+        if not self.is_valid_address(sender) or not self.is_valid_address(recipient):
+            return False
+        return True
+
+    def is_valid_address(self, address):
+        return isinstance(address, str) and len(address) == 42 and address.startswith('0x')
+
+    @property
+    def last_block(self):
+        return self.chain[-1]
+
+    def proof_of_work(self, previous_nonce):
+        nonce = 0
+        while not self.valid_proof(previous_nonce, nonce):
+            nonce += 1
+        return nonce
+
+    def valid_proof(self, previous_nonce, nonce):
+        guess = f'{previous_nonce}{nonce}'.encode()
+        guess_hash = hashlib.sha256(guess).hexdigest()
+        return guess_hash[:self.difficulty] == "0" * self.difficulty
+
+    def calculate_hash(self, index, previous_hash, timestamp, transactions, nonce):
+        value = str(index) + previous_hash + str(timestamp) + json.dumps(transactions, sort_keys=True) + str(nonce)
+        return hashlib.sha256(value.encode()).hexdigest()
+
+# 4. Define Flask Web Server
+app = Flask(__name__)
+blockchain = Blockchain()
+
+# 5. Define API Endpoints
+@app.route('/transaction/new', methods=['POST'])
+def new_transaction():
+    values = request.get_json()
+    required = ['sender', 'recipient', 'amount']
+    if not all(k in values for k in required):
+        return 'Missing values', 400
+
+    transaction_id = blockchain.add_transaction(values['sender'], values['recipient'], values['amount'])
+    if not transaction_id:
+        return 'Invalid transaction', 400
+
+    response = {'message': f'Transaction will be added to Block {transaction_id}'}
+    return jsonify(response), 201
+
+@app.route('/mine', methods=['GET'])
+def mine():
+    last_block = blockchain.last_block
+    last_nonce = last_block.nonce
+    nonce = blockchain.proof_of_work(last_nonce)
+
+    # Reward for mining
+    blockchain.add_transaction(sender="0", recipient="miner_address", amount=blockchain.mining_reward)
+
+    previous_hash = blockchain.calculate_hash(last_block.index, last_block.previous_hash, last_block.timestamp, last_block.transactions, last_nonce)
+    block = blockchain.create_block(nonce, previous_hash)
+
+    response = {
+        'message': 'New block mined',
+        'index': block.index,
+        'transactions': block.transactions,
+        'nonce': block.nonce,
+        'previous_hash': block.previous_hash,
+    }
+    return jsonify(response), 200
+
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    response = {
+        'chain': [{'index': block.index, 'previous_hash': block.previous_hash, 'timestamp': block.timestamp, 'transactions': block.transactions, 'hash': block.hash} for block in blockchain.chain],
+        'length': len(blockchain.chain),
+    }
+    return jsonify(response), 200
+
+# 6. Run the Flask App
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+### Key Changes Made:
+1. **Organized Imports**: Grouped all imports at the top.
+2. **Class Definitions**: Grouped the `Block` and `Blockchain` classes together for better readability.
+3. **API Endpoints**: Clearly separated the API endpoint definitions for better structure.
+4. **Consistent Naming**: Ensured consistent naming conventions and clarity in method names.
+5. **Comments**: Added comments to each section for better understanding.
